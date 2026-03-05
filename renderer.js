@@ -35,26 +35,27 @@ async function pantallaNuevoPedido() {
     area.innerHTML = `
         <div class="panel-comanda">
             <h3>Nueva Comanda</h3>
-            
             <div id="mensaje-pedido" style="display: none; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-weight: bold; text-align: center;"></div>
             
             <label>Cliente:</label><br>
-            <input type="text" id="input-cliente" class="input-bloque" placeholder="Buscar cliente..." autocomplete="on" />
+            <input type="text" id="input-cliente" class="input-bloque" placeholder="Buscar cliente..." autocomplete="off" />
             <div id="sugerencias-cliente" class="caja-sugerencias"></div>
             <hr>
+            
             <label>Agregar Producto:</label><br>
             <div class="fila-flexible">
                 <div class="contenedor-relativo flex-1">
-                    <input type="text" id="input-producto" class="input-bloque" placeholder="Escribí para buscar..." autocomplete="on" />
+                    <input type="text" id="input-producto" class="input-bloque" placeholder="Escribí para buscar..." autocomplete="off" />
                     <div id="sugerencias-producto" class="caja-sugerencias absoluta"></div>
                 </div>
-                <input type="number" id="input-precio" class="input-corto" placeholder="$" />
-                <input type="number" id="input-cantidad" class="input-mini" value="1" />
+                <input type="number" id="input-precio" class="input-corto" placeholder="$" readonly tabindex="-1" />
+                <input type="number" id="input-cantidad" class="input-mini" value="1" min="1" />
                 <button id="btn-agregar" class="btn-secundario">Agregar</button>
             </div>
             <ul id="lista-pedido" class="lista-items"></ul>
             <p class="texto-total"><strong>Total: $<span id="total-pedido">0</span></strong></p>
             <hr>
+            
             <div class="fila-flexible mb-espaciado">
                 <div>
                     <label>Método de Pago:</label><br>
@@ -64,9 +65,11 @@ async function pantallaNuevoPedido() {
                     </select>
                 </div>
                 <div>
-                    <label>Asignar Cadete:</label><br>
+                    <label>Modalidad de Entrega:</label><br>
                     <select id="select-cadete" class="input-base">
-                        <option value="Retira en Local">Retira en Local</option>
+                        <option value="Retira en Local">🏠 Retira en Local</option>
+                        <optgroup label="🛵 Envío a Domicilio" id="grupo-cadetes">
+                            </optgroup>
                     </select>
                 </div>
             </div>
@@ -78,30 +81,24 @@ async function pantallaNuevoPedido() {
     const inputPrecio = document.getElementById('input-precio');
     const divSugProd = document.getElementById('sugerencias-producto');
     const divSugCli = document.getElementById('sugerencias-cliente');
-    const selectCadete = document.getElementById('select-cadete');
+    const grupoCadetes = document.getElementById('grupo-cadetes');
     const divMensaje = document.getElementById('mensaje-pedido');
 
     const mostrarMensaje = (texto, tipo) => {
         divMensaje.textContent = texto;
         divMensaje.style.display = 'block';
-        if (tipo === 'error') {
-            divMensaje.style.backgroundColor = '#f8d7da';
-            divMensaje.style.color = '#721c24';
-            divMensaje.style.border = '1px solid #f5c6cb';
-        } else {
-            divMensaje.style.backgroundColor = '#d4edda';
-            divMensaje.style.color = '#155724';
-            divMensaje.style.border = '1px solid #c3e6cb';
-        }
+        divMensaje.style.backgroundColor = tipo === 'error' ? '#f8d7da' : '#d4edda';
+        divMensaje.style.color = tipo === 'error' ? '#721c24' : '#155724';
         setTimeout(() => { divMensaje.style.display = 'none'; }, 3000);
     };
 
+    // Cargar cadetes en el grupo de envío
     const cadetes = await window.api.obtenerCadetes();
     cadetes.forEach(c => {
         const opt = document.createElement('option');
         opt.value = c.nombre; 
-        opt.textContent = c.nombre;
-        selectCadete.appendChild(opt);
+        opt.textContent = `Cadete: ${c.nombre}`;
+        grupoCadetes.appendChild(opt);
     });
 
     inputCli.addEventListener('input', async () => {
@@ -112,7 +109,11 @@ async function pantallaNuevoPedido() {
                 const item = document.createElement('div');
                 item.innerText = `${c.nombre} (${c.direccion})`;
                 item.classList.add('item-sugerencia');
-                item.onclick = () => { inputCli.value = c.nombre; clienteSeleccionadoId = c.id; divSugCli.innerHTML = ""; };
+                item.onclick = () => { 
+                    inputCli.value = c.nombre; 
+                    clienteSeleccionadoId = c.id; 
+                    divSugCli.innerHTML = ""; 
+                };
                 divSugCli.appendChild(item);
             });
         }
@@ -126,7 +127,11 @@ async function pantallaNuevoPedido() {
                 const item = document.createElement('div');
                 item.innerText = `${p.nombre} - $${p.precio}`;
                 item.classList.add('item-sugerencia');
-                item.onclick = () => { inputProd.value = p.nombre; inputPrecio.value = p.precio; divSugProd.innerHTML = ""; };
+                item.onclick = () => { 
+                    inputProd.value = p.nombre; 
+                    inputPrecio.value = p.precio; // Se asigna automáticamente el precio del menú
+                    divSugProd.innerHTML = ""; 
+                };
                 divSugProd.appendChild(item);
             });
         }
@@ -138,7 +143,7 @@ async function pantallaNuevoPedido() {
         const cant = parseInt(document.getElementById('input-cantidad').value);
         
         if (!nombre || isNaN(precio)) {
-            return mostrarMensaje("Faltan ingresar datos del producto o su precio.", "error");
+            return mostrarMensaje("Seleccioná un producto de la lista.", "error");
         }
         
         totalAcumulado += (cant * precio);
@@ -151,35 +156,35 @@ async function pantallaNuevoPedido() {
         
         inputProd.value = ""; 
         inputPrecio.value = ""; 
+        document.getElementById('input-cantidad').value = 1;
         inputProd.focus();
     });
 
     document.getElementById('btn-guardar').addEventListener('click', async (e) => {
         if (!clienteSeleccionadoId) {
-            return mostrarMensaje("Tenés que seleccionar un cliente de la lista para guardar el pedido.", "error");
+            return mostrarMensaje("Falta seleccionar el cliente.", "error");
+        }
+        if (totalAcumulado <= 0) {
+            return mostrarMensaje("El pedido está vacío.", "error");
         }
         
         const btn = e.target;
-        const textoOriginal = btn.textContent;
-        btn.textContent = "Guardando...";
         btn.disabled = true;
 
         const datos = { 
             idCliente: clienteSeleccionadoId, 
             total: totalAcumulado, 
             metodo: document.getElementById('select-pago').value, 
-            idCadete: document.getElementById('select-cadete').value 
+            idCadete: document.getElementById('select-cadete').value // Captura "Retira en Local" o el nombre del cadete
         };
-        const res = await window.api.guardarPedido(datos);
         
+        const res = await window.api.guardarPedido(datos);
         if (res.exito) { 
-            mostrarMensaje("✅ Comanda guardada correctamente", "exito");
-            btn.textContent = "✅ Guardado";
+            mostrarMensaje("✅ Guardado correctamente", "exito");
             imprimirTicket(totalAcumulado, document.getElementById('lista-pedido').innerHTML);
             setTimeout(() => { pantallaNuevoPedido(); }, 1500);
         } else {
-            mostrarMensaje("Hubo un error al guardar en la base de datos.", "error");
-            btn.textContent = textoOriginal;
+            mostrarMensaje("Error al guardar.", "error");
             btn.disabled = false;
         }
     });
