@@ -1,0 +1,100 @@
+/* =========================================
+. VARIABLES GLOBALES
+   ========================================= */
+:root {
+    --color-fondo: #ffffff;
+    --color-fondo-panel: #ffffff;
+    --color-texto: #333333;
+    --color-primario: #0056b3;
+    --color-primario-hover: #004494;
+    --color-secundario: #6c757d;
+    --color-secundario-hover: #5a6268;
+    --color-exito: #28a745;
+    --color-exito-hover: #218838;
+    --color-borde: #dddddd;
+    --color-menu: #2c3e50;
+    --color-menu-texto: #ecf0f1;
+    --espaciado-base: 16px;
+    --radio-borde: 6px;
+}
+
+/* =========================================
+    RESET Y TIPOGRAFÍA
+   ========================================= */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: system-ui, -apple-system, sans-serif;
+    color: var(--color-texto);
+    background-color: var(--color-fondo);
+    height: 100vh;
+    overflow: hidden;
+}
+
+h2, h3 {
+    margin-bottom: var(--espaciado-base);
+    color: var(--color-primario);
+}
+
+hr {
+    border: 0;
+    border-top: 1px solid var(--color-borde);
+    margin: var(--espaciado-base) 0;
+}
+
+/* =========================================
+    LAYOUT PRINCIPAL
+   ========================================= */
+#contenedor-principal {
+    display: flex;
+    height: 100vh;
+}
+
+#menu {
+    width: 220px;
+    background-color: var(--color-menu);
+    padding: var(--espaciado-base);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#menu button {
+    background: transparent;
+    color: var(--color-menu-texto);
+    border: 1px solid transparent;
+    padding: 12px;
+    text-align: left;
+    font-size: 1rem;
+    cursor: pointer;
+    border-radius: var(--radio-borde);
+    transition: background 0.2s;
+}
+
+#menu button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+#pantalla-activa {
+    flex-grow: 1;
+    padding: 30px;
+    overflow-y: auto;
+}
+
+/* =========================================
+    BOTONES
+   ========================================= */
+button {
+    font-family: inherit;
+    font-size: 1rem;
+    padding: 10px 20px;
+    border: 1px solid transparent;
+    border-radius: var(--radio-borde);
+    cursor: pointer;
+    transition: all 0.2s;
+}

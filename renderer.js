@@ -1,0 +1,298 @@
+ const btnPedidos = document.getElementById('btn-pedidos');
+const btnClientes = document.getElementById('btn-clientes');
+const btnProductos = document.getElementById('btn-productos');
+const btnCadetes = document.getElementById('btn-cadetes'); 
+const pantallaActiva = document.getElementById('pantalla-activa');
+
+let clienteSeleccionadoId = null; 
+let totalAcumulado = 0;           
+
+// EVENTOS DEL MENÚ PRINCIPAL
+btnPedidos.addEventListener('click', () => {
+    pantallaActiva.innerHTML = `
+        <h2>Gestión de Pedidos</h2>
+        <div class="controles-superiores">
+            <button id="btn-nuevo-pedido" class="btn-accion">Nuevo Pedido</button>
+            <button id="btn-ver-pedidos" class="btn-accion">Ver Historial</button>
+        </div>
+        <div id="area-trabajo-pedidos"></div>`;
+
+    document.getElementById('btn-nuevo-pedido').addEventListener('click', pantallaNuevoPedido);
+    document.getElementById('btn-ver-pedidos').addEventListener('click', pantallaHistorial);
+});
+
+btnClientes.addEventListener('click', pantallaGestionClientes);
+btnProductos.addEventListener('click', pantallaGestionMenu);
+btnCadetes.addEventListener('click', pantallaGestionCadetes);
+
+// FUNCIONES DE PANTALLA
+
+async function pantallaNuevoPedido() {
+    const area = document.getElementById('area-trabajo-pedidos');
+    totalAcumulado = 0;
+    clienteSeleccionadoId = null;
+
+    area.innerHTML = `
+        <div class="panel-comanda">
+            <h3>Nueva Comanda</h3>
+            
+            <div id="mensaje-pedido" style="display: none; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-weight: bold; text-align: center;"></div>
+            
+            <label>Cliente:</label><br>
+            <input type="text" id="input-cliente" class="input-bloque" placeholder="Buscar cliente..." autocomplete="on" />
+            <div id="sugerencias-cliente" class="caja-sugerencias"></div>
+            <hr>
+            <label>Agregar Producto:</label><br>
+            <div class="fila-flexible">
+                <div class="contenedor-relativo flex-1">
+                    <input type="text" id="input-producto" class="input-bloque" placeholder="Escribí para buscar..." autocomplete="on" />
+                    <div id="sugerencias-producto" class="caja-sugerencias absoluta"></div>
+                </div>
+                <input type="number" id="input-precio" class="input-corto" placeholder="$" />
+                <input type="number" id="input-cantidad" class="input-mini" value="1" />
+                <button id="btn-agregar" class="btn-secundario">Agregar</button>
+            </div>
+            <ul id="lista-pedido" class="lista-items"></ul>
+            <p class="texto-total"><strong>Total: $<span id="total-pedido">0</span></strong></p>
+            <hr>
+            <div class="fila-flexible mb-espaciado">
+                <div>
+                    <label>Método de Pago:</label><br>
+                    <select id="select-pago" class="input-base">
+                        <option value="Efectivo">Efectivo</option>
+                        <option value="MercadoPago">MercadoPago</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Asignar Cadete:</label><br>
+                    <select id="select-cadete" class="input-base">
+                        <option value="Retira en Local">Retira en Local</option>
+                    </select>
+                </div>
+            </div>
+            <button id="btn-guardar" class="btn-primario btn-bloque">CONFIRMAR Y GUARDAR</button>
+        </div>`;
+
+    const inputCli = document.getElementById('input-cliente');
+    const inputProd = document.getElementById('input-producto');
+    const inputPrecio = document.getElementById('input-precio');
+    const divSugProd = document.getElementById('sugerencias-producto');
+    const divSugCli = document.getElementById('sugerencias-cliente');
+    const selectCadete = document.getElementById('select-cadete');
+    const divMensaje = document.getElementById('mensaje-pedido');
+
+    const mostrarMensaje = (texto, tipo) => {
+        divMensaje.textContent = texto;
+        divMensaje.style.display = 'block';
+        if (tipo === 'error') {
+            divMensaje.style.backgroundColor = '#f8d7da';
+            divMensaje.style.color = '#721c24';
+            divMensaje.style.border = '1px solid #f5c6cb';
+        } else {
+            divMensaje.style.backgroundColor = '#d4edda';
+            divMensaje.style.color = '#155724';
+            divMensaje.style.border = '1px solid #c3e6cb';
+        }
+        setTimeout(() => { divMensaje.style.display = 'none'; }, 3000);
+    };
+
+    const cadetes = await window.api.obtenerCadetes();
+    cadetes.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.nombre; 
+        opt.textContent = c.nombre;
+        selectCadete.appendChild(opt);
+    });
+
+    inputCli.addEventListener('input', async () => {
+        divSugCli.innerHTML = "";
+        if (inputCli.value.length > 2) {
+            const clientes = await window.api.buscarCliente(inputCli.value);
+            clientes.forEach(c => {
+                const item = document.createElement('div');
+                item.innerText = `${c.nombre} (${c.direccion})`;
+                item.classList.add('item-sugerencia');
+                item.onclick = () => { inputCli.value = c.nombre; clienteSeleccionadoId = c.id; divSugCli.innerHTML = ""; };
+                divSugCli.appendChild(item);
+            });
+        }
+    });
+
+    inputProd.addEventListener('input', async () => {
+        divSugProd.innerHTML = "";
+        if (inputProd.value.length > 1) {
+            const productos = await window.api.buscarProductos(inputProd.value);
+            productos.forEach(p => {
+                const item = document.createElement('div');
+                item.innerText = `${p.nombre} - $${p.precio}`;
+                item.classList.add('item-sugerencia');
+                item.onclick = () => { inputProd.value = p.nombre; inputPrecio.value = p.precio; divSugProd.innerHTML = ""; };
+                divSugProd.appendChild(item);
+            });
+        }
+    });
+
+    document.getElementById('btn-agregar').addEventListener('click', () => {
+        const nombre = inputProd.value; 
+        const precio = parseFloat(inputPrecio.value); 
+        const cant = parseInt(document.getElementById('input-cantidad').value);
+        
+        if (!nombre || isNaN(precio)) {
+            return mostrarMensaje("Faltan ingresar datos del producto o su precio.", "error");
+        }
+        
+        totalAcumulado += (cant * precio);
+        document.getElementById('total-pedido').innerText = totalAcumulado;
+        
+        const li = document.createElement('li'); 
+        li.innerText = `${cant}x ${nombre} --- $${cant * precio}`;
+        li.classList.add('item-pedido');
+        document.getElementById('lista-pedido').appendChild(li);
+        
+        inputProd.value = ""; 
+        inputPrecio.value = ""; 
+        inputProd.focus();
+    });
+
+    document.getElementById('btn-guardar').addEventListener('click', async (e) => {
+        if (!clienteSeleccionadoId) {
+            return mostrarMensaje("Tenés que seleccionar un cliente de la lista para guardar el pedido.", "error");
+        }
+        
+        const btn = e.target;
+        const textoOriginal = btn.textContent;
+        btn.textContent = "Guardando...";
+        btn.disabled = true;
+
+        const datos = { 
+            idCliente: clienteSeleccionadoId, 
+            total: totalAcumulado, 
+            metodo: document.getElementById('select-pago').value, 
+            idCadete: document.getElementById('select-cadete').value 
+        };
+        const res = await window.api.guardarPedido(datos);
+        
+        if (res.exito) { 
+            mostrarMensaje("✅ Comanda guardada correctamente", "exito");
+            btn.textContent = "✅ Guardado";
+            setTimeout(() => { pantallaNuevoPedido(); }, 1500);
+        } else {
+            mostrarMensaje("Hubo un error al guardar en la base de datos.", "error");
+            btn.textContent = textoOriginal;
+            btn.disabled = false;
+        }
+    });
+}
+
+async function pantallaHistorial() {
+    const area = document.getElementById('area-trabajo-pedidos');
+    const pedidos = await window.api.obtenerPedidos();
+    const totalCaja = pedidos.reduce((acc, p) => acc + p.total, 0);
+    
+    let html = `
+        <h3>Historial</h3>
+        <div class="panel-total-caja">
+            <strong>Total: $${totalCaja}</strong>
+        </div>
+        <table class="tabla-datos">
+            <thead>
+                <tr><th>ID</th><th>Fecha</th><th>Cliente</th><th>Cadete</th><th>Pago</th><th>Total</th></tr>
+            </thead>
+            <tbody>`;
+            
+    pedidos.forEach(p => {
+        html += `<tr><td>#${p.id}</td><td>${p.fecha}</td><td>${p.nombre || 'Anónimo'}</td><td>${p.id_cadete || '-'}</td><td>${p.metodo_pago}</td><td>$${p.total}</td></tr>`;
+    });
+    
+    area.innerHTML = html + `</tbody></table>`;
+}
+
+function pantallaGestionClientes() {
+    pantallaActiva.innerHTML = `
+        <h2>Clientes</h2>
+        <div class="formulario-linea">
+            <input type="text" id="nom" class="input-base" placeholder="Nombre"/>
+            <input type="text" id="tel" class="input-base" placeholder="Tel"/>
+            <input type="text" id="dir" class="input-base" placeholder="Dirección"/>
+            <button id="save-cli" class="btn-primario">Registrar</button>
+        </div>`;
+        
+    document.getElementById('save-cli').addEventListener('click', async (e) => {
+        const btn = e.target;
+        const res = await window.api.guardarNuevoCliente({ 
+            nombre: document.getElementById('nom').value, 
+            telefono: document.getElementById('tel').value, 
+            direccion: document.getElementById('dir').value 
+        });
+        
+        if(res.exito) { 
+            btn.textContent = "✅ Registrado";
+            btn.style.backgroundColor = "var(--color-exito)"; 
+            setTimeout(() => { pantallaGestionClientes(); }, 1000);
+        }
+    });
+}
+
+async function pantallaGestionMenu() {
+    pantallaActiva.innerHTML = `
+        <h2>Menú</h2>
+        <div class="formulario-linea">
+            <input type="text" id="p-nom" class="input-base" placeholder="Producto"/>
+            <input type="number" id="p-pre" class="input-base" placeholder="Precio"/>
+            <button id="btn-s-p" class="btn-primario">Guardar</button>
+        </div>
+        <hr>
+        <div id="lista-p" class="grilla-items"></div>`;
+        
+    const lista = document.getElementById('lista-p');
+    const productos = await window.api.buscarProductos(""); 
+    productos.forEach(p => { 
+        lista.innerHTML += `<div class="card-item">${p.nombre} - <strong>$${p.precio}</strong></div>`; 
+    });
+
+   document.getElementById('btn-s-p').addEventListener('click', async (e) => {
+        const btn = e.target;
+        const res = await window.api.guardarNuevoProducto({ 
+            nombre: document.getElementById('p-nom').value, 
+            precio: document.getElementById('p-pre').value 
+        });
+        if (res.exito) {
+            btn.textContent = "✅ Guardado";
+            btn.style.backgroundColor = "var(--color-exito)";
+            btn.style.color = "white"; 
+            setTimeout(() => { pantallaGestionMenu(); }, 1000);
+        }
+    });
+}
+
+async function pantallaGestionCadetes() {
+    pantallaActiva.innerHTML = `
+        <h2>Cadetes</h2>
+        <div class="formulario-linea">
+            <input type="text" id="c-nom" class="input-base" placeholder="Nombre"/>
+            <button id="btn-s-c" class="btn-primario">Guardar</button>
+        </div>
+        <hr>
+        <div id="lista-c" class="grilla-items"></div>`;
+        
+    const lista = document.getElementById('lista-c');
+    const cadetes = await window.api.obtenerCadetes();
+    cadetes.forEach(c => { 
+        lista.innerHTML += `<div class="card-item">${c.nombre}</div>`; 
+    });
+        
+    document.getElementById('btn-s-c').addEventListener('click', async (e) => {
+        const btn = e.target;
+        const res = await window.api.guardarNuevoCadete({ 
+            nombre: document.getElementById('c-nom').value,
+            telefono: "", 
+            vehiculo: ""  
+        });
+        if (res.exito) {
+            btn.textContent = "✅ Guardado";
+            btn.style.backgroundColor = "var(--color-exito)";
+            btn.style.color = "white";
+            setTimeout(() => { pantallaGestionCadetes(); }, 1000);
+        }
+    });
+}
