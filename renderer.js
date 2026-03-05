@@ -7,7 +7,9 @@ const pantallaActiva = document.getElementById('pantalla-activa');
 let clienteSeleccionadoId = null; 
 let totalAcumulado = 0;           
 
+// =========================================
 // UTILS: Feedback visual en botones
+// =========================================
 const feedbackBoton = (boton, textoExito) => {
     const textoOriginal = boton.innerText;
     const colorOriginal = boton.style.backgroundColor;
@@ -25,7 +27,9 @@ const feedbackBoton = (boton, textoExito) => {
     }, 1500);
 };
 
-// EVENTOS MENÚ
+// =========================================
+// EVENTOS MENÚ PRINCIPAL
+// =========================================
 btnPedidos.addEventListener('click', () => {
     pantallaActiva.innerHTML = `
         <h2>Gestión de Pedidos</h2>
@@ -42,7 +46,9 @@ btnClientes.addEventListener('click', pantallaGestionClientes);
 btnProductos.addEventListener('click', pantallaGestionMenu);
 btnCadetes.addEventListener('click', pantallaGestionCadetes);
 
-// PANTALLAS
+// =========================================
+// GESTIÓN DE PEDIDOS
+// =========================================
 async function pantallaNuevoPedido() {
     const area = document.getElementById('area-trabajo-pedidos');
     totalAcumulado = 0;
@@ -154,13 +160,16 @@ async function pantallaNuevoPedido() {
         };
         const res = await window.api.guardarPedido(datos);
         if (res.exito) { 
-            feedbackBoton(btnGuardar, "✅ Guardado y Ticket");
+            feedbackBoton(btnGuardar, "✅ ¡Pedido y Ticket Guardados!");
             imprimirTicket(totalAcumulado, document.getElementById('lista-pedido').innerHTML);
             setTimeout(() => { pantallaNuevoPedido(); }, 1500);
         }
     });
 }
 
+// =========================================
+// GESTIÓN DE PRODUCTOS
+// =========================================
 async function pantallaGestionMenu() {
     pantallaActiva.innerHTML = `
         <h2>Gestión de Productos</h2>
@@ -183,11 +192,19 @@ async function pantallaGestionMenu() {
         const p = { nombre: document.getElementById('prod-nombre').value, precio: parseFloat(document.getElementById('prod-precio').value) };
         if(!p.nombre || isNaN(p.precio)) return;
         const res = await window.api.guardarNuevoProducto(p);
-        if(res.exito) { feedbackBoton(btn, "✅ Agregado"); cargar(); document.getElementById('prod-nombre').value = ""; document.getElementById('prod-precio').value = ""; }
+        if(res.exito) { 
+            feedbackBoton(btn, "✅ ¡Producto Agregado!"); 
+            cargar(); 
+            document.getElementById('prod-nombre').value = ""; 
+            document.getElementById('prod-precio').value = ""; 
+        }
     });
     cargar();
 }
 
+// =========================================
+// GESTIÓN DE CADETES
+// =========================================
 async function pantallaGestionCadetes() {
     pantallaActiva.innerHTML = `
         <h2>Gestión de Cadetes</h2>
@@ -211,11 +228,20 @@ async function pantallaGestionCadetes() {
         const cad = { nombre: document.getElementById('cad-nombre').value, telefono: document.getElementById('cad-tel').value, vehiculo: document.getElementById('cad-veh').value };
         if(!cad.nombre) return;
         const res = await window.api.guardarNuevoCadete(cad);
-        if(res.exito) { feedbackBoton(btn, "✅ Registrado"); cargar(); document.getElementById('cad-nombre').value = ""; document.getElementById('cad-tel').value = ""; document.getElementById('cad-veh').value = ""; }
+        if(res.exito) { 
+            feedbackBoton(btn, "✅ ¡Cadete Registrado!"); 
+            cargar(); 
+            document.getElementById('cad-nombre').value = ""; 
+            document.getElementById('cad-tel').value = ""; 
+            document.getElementById('cad-veh').value = ""; 
+        }
     });
     cargar();
 }
 
+// =========================================
+// GESTIÓN DE CLIENTES
+// =========================================
 async function pantallaGestionClientes() {
     pantallaActiva.innerHTML = `
         <h2>Gestión de Clientes</h2>
@@ -230,10 +256,18 @@ async function pantallaGestionClientes() {
         const c = { nombre: document.getElementById('cli-nombre').value, telefono: document.getElementById('cli-tel').value, direccion: document.getElementById('cli-dir').value };
         if(!c.nombre) return;
         const res = await window.api.guardarNuevoCliente(c);
-        if(res.exito) { feedbackBoton(btn, "✅ Cliente Registrado"); document.getElementById('cli-nombre').value = ""; document.getElementById('cli-tel').value = ""; document.getElementById('cli-dir').value = ""; }
+        if(res.exito) { 
+            feedbackBoton(btn, "✅ ¡Cliente Registrado!"); 
+            document.getElementById('cli-nombre').value = ""; 
+            document.getElementById('cli-tel').value = ""; 
+            document.getElementById('cli-dir').value = ""; 
+        }
     });
 }
 
+// =========================================
+// HISTORIAL Y TICKET
+// =========================================
 async function pantallaHistorial() {
     const area = document.getElementById('area-trabajo-pedidos');
     const pedidos = await window.api.obtenerPedidos();
