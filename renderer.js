@@ -8,6 +8,24 @@ let clienteSeleccionadoId = null;
 let totalAcumulado = 0;           
 
 // =========================================
+// UTILIDADES DE FEEDBACK (SIN ALERTS)
+// =========================================
+const mostrarNotificacion = (contenedor, texto, tipo) => {
+    const divMensaje = document.createElement('div');
+    divMensaje.textContent = texto;
+    divMensaje.style.padding = '10px';
+    divMensaje.style.borderRadius = '6px';
+    divMensaje.style.marginBottom = '15px';
+    divMensaje.style.fontWeight = 'bold';
+    divMensaje.style.textAlign = 'center';
+    divMensaje.style.backgroundColor = tipo === 'error' ? '#f8d7da' : '#d4edda';
+    divMensaje.style.color = tipo === 'error' ? '#721c24' : '#155724';
+    
+    contenedor.prepend(divMensaje);
+    setTimeout(() => { divMensaje.remove(); }, 3000);
+};
+
+// =========================================
 // EVENTOS DEL MENÚ PRINCIPAL
 // =========================================
 btnPedidos.addEventListener('click', () => {
@@ -37,15 +55,12 @@ async function pantallaNuevoPedido() {
     let precioProductoActual = 0;
 
     area.innerHTML = `
-        <div class="panel-comanda">
+        <div class="panel-comanda" id="form-pedido">
             <h3>Nueva Comanda</h3>
-            <div id="mensaje-pedido" style="display: none; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-weight: bold; text-align: center;"></div>
-            
             <label>Cliente:</label><br>
             <input type="text" id="input-cliente" class="input-bloque" placeholder="Buscar cliente..." autocomplete="off" />
             <div id="sugerencias-cliente" class="caja-sugerencias"></div>
             <hr>
-            
             <label>Agregar Producto:</label><br>
             <div class="fila-flexible">
                 <div class="contenedor-relativo flex-1">
@@ -58,7 +73,6 @@ async function pantallaNuevoPedido() {
             <ul id="lista-pedido" class="lista-items"></ul>
             <p class="texto-total"><strong>Total: $<span id="total-pedido">0</span></strong></p>
             <hr>
-            
             <div class="fila-flexible mb-espaciado">
                 <div>
                     <label>Método de Pago:</label><br>
@@ -83,6 +97,7 @@ async function pantallaNuevoPedido() {
     const divSugProd = document.getElementById('sugerencias-producto');
     const divSugCli = document.getElementById('sugerencias-cliente');
     const grupoCadetes = document.getElementById('grupo-cadetes');
+    const formPedido = document.getElementById('form-pedido');
 
     const cadetes = await window.api.obtenerCadetes();
     cadetes.forEach(c => {
@@ -145,7 +160,9 @@ async function pantallaNuevoPedido() {
     });
 
     document.getElementById('btn-guardar').addEventListener('click', async (e) => {
-        if (!clienteSeleccionadoId || totalAcumulado <= 0) return;
+        if (!clienteSeleccionadoId || totalAcumulado <= 0) {
+            return mostrarNotificacion(formPedido, "⚠️ Faltan datos", "error");
+        }
         const datos = { 
             idCliente: clienteSeleccionadoId, 
             total: totalAcumulado, 
@@ -154,8 +171,94 @@ async function pantallaNuevoPedido() {
         };
         const res = await window.api.guardarPedido(datos);
         if (res.exito) { 
+            mostrarNotificacion(formPedido, "✅ Pedido Guardado", "exito");
             imprimirTicket(totalAcumulado, document.getElementById('lista-pedido').innerHTML);
-            pantallaNuevoPedido();
+            setTimeout(() => { pantallaNuevoPedido(); }, 1500);
+        }
+    });
+}
+
+// =========================================
+// GESTIÓN DE PRODUCTOS Y CADETES (CON TABLAS)
+// =========================================
+async function pantallaGestionMenu() {
+    pantallaActiva.innerHTML = `
+        <h2>Gestión de Productos</h2>
+        <div class="panel-formulario" id="form-productos">
+            <input type="text" id="prod-nombre" placeholder="Nombre del producto" class="input-base">
+            <input type="number" id="prod-precio" placeholder="Precio" class="input-base">
+            <button id="btn-registrar-prod" class="btn-primario">Agregar al Menú</button>
+        </div>
+        <hr>
+        <h3>Productos en el Menú</h3>
+        <table class="tabla-base">
+            <thead><tr><th>Producto</th><th>Precio</th></tr></thead>
+            <tbody id="lista-productos-tabla"></tbody>
+        </table>`;
+
+    const cargarProductos = async () => {
+        const productos = await window.api.buscarProductos("");
+        document.getElementById('lista-productos-tabla').innerHTML = productos.map(p => `<tr><td>${p.nombre}</td><td>$${p.precio}</td></tr>`).join('');
+    };
+
+    document.getElementById('btn-registrar-prod').addEventListener('click', async () => {
+        const p = { nombre: document.getElementById('prod-nombre').value, precio: parseFloat(document.getElementById('prod-precio').value) };
+        if(!p.nombre || isNaN(p.precio)) return;
+        const res = await window.api.guardarNuevoProducto(p);
+        if(res.exito) {
+            mostrarNotificacion(document.getElementById('form-productos'), "✅ Producto agregado", "exito");
+            setTimeout(() => { pantallaGestionMenu(); }, 1000);
+        }
+    });
+    cargarProductos();
+}
+
+async function pantallaGestionCadetes() {
+    pantallaActiva.innerHTML = `
+        <h2>Gestión de Cadetes</h2>
+        <div class="panel-formulario" id="form-cadetes">
+            <input type="text" id="cad-nombre" placeholder="Nombre" class="input-base">
+            <input type="text" id="cad-tel" placeholder="Teléfono" class="input-base">
+            <input type="text" id="cad-veh" placeholder="Vehículo" class="input-base">
+            <button id="btn-registrar-cad" class="btn-primario">Registrar Cadete</button>
+        </div>
+        <hr>
+        <h3>Cadetes Registrados</h3>
+        <table class="tabla-base">
+            <thead><tr><th>Nombre</th><th>Teléfono</th><th>Vehículo</th></tr></thead>
+            <tbody id="lista-cadetes-tabla"></tbody>
+        </table>`;
+
+    const cargarCadetes = async () => {
+        const cadetes = await window.api.obtenerCadetes();
+        document.getElementById('lista-cadetes-tabla').innerHTML = cadetes.map(c => `<tr><td>${c.nombre}</td><td>${c.telefono}</td><td>${c.vehiculo}</td></tr>`).join('');
+    };
+
+    document.getElementById('btn-registrar-cad').addEventListener('click', async () => {
+        const cad = { nombre: document.getElementById('cad-nombre').value, telefono: document.getElementById('cad-tel').value, vehiculo: document.getElementById('cad-veh').value };
+        if(!cad.nombre) return;
+        const res = await window.api.guardarNuevoCadete(cad);
+        if(res.exito) {
+            mostrarNotificacion(document.getElementById('form-cadetes'), "✅ Cadete registrado", "exito");
+            setTimeout(() => { pantallaGestionCadetes(); }, 1000);
+        }
+    });
+    cargarCadetes();
+}
+
+async function pantallaGestionClientes() {
+    pantallaActiva.innerHTML = `<h2>Gestión de Clientes</h2>
+        <div class="panel-formulario" id="form-clientes">
+            <input type="text" id="cli-nombre" placeholder="Nombre" class="input-base">
+            <input type="text" id="cli-tel" placeholder="Teléfono" class="input-base">
+            <input type="text" id="cli-dir" placeholder="Dirección" class="input-base">
+            <button id="btn-registrar-cli" class="btn-primario">Registrar Cliente</button>
+        </div>`;
+    document.getElementById('btn-registrar-cli').addEventListener('click', async () => {
+        const c = { nombre: document.getElementById('cli-nombre').value, telefono: document.getElementById('cli-tel').value, direccion: document.getElementById('cli-dir').value };
+        const res = await window.api.guardarNuevoCliente(c);
+        if(res.exito) {
+            mostrarNotificacion(document.getElementById('form-clientes'), "✅ Cliente registrado", "exito");
         }
     });
 }
@@ -170,108 +273,7 @@ async function pantallaHistorial() {
         </table>`;
     const tabla = document.getElementById('cuerpo-historial');
     pedidos.forEach(p => {
-        tabla.innerHTML += `<tr>
-            <td>${new Date(p.fecha).toLocaleDateString()}</td>
-            <td>${p.cliente_nombre}</td>
-            <td>$${p.total}</td>
-            <td>${p.metodo_pago}</td>
-            <td>${p.id_cadete}</td>
-        </tr>`;
-    });
-}
-
-// =========================================
-// GESTIÓN DE PRODUCTOS (CON LISTA)
-// =========================================
-async function pantallaGestionMenu() {
-    pantallaActiva.innerHTML = `
-        <h2>Gestión de Productos</h2>
-        <div class="panel-formulario">
-            <input type="text" id="prod-nombre" placeholder="Nombre del producto" class="input-base">
-            <input type="number" id="prod-precio" placeholder="Precio" class="input-base">
-            <button id="btn-registrar-prod" class="btn-primario">Agregar al Menú</button>
-        </div>
-        <hr>
-        <h3>Productos en el Menú</h3>
-        <table class="tabla-base">
-            <thead><tr><th>Producto</th><th>Precio</th></tr></thead>
-            <tbody id="lista-productos-tabla"></tbody>
-        </table>`;
-
-    const cargarProductos = async () => {
-        const productos = await window.api.buscarProductos(""); // Trae todos
-        const tabla = document.getElementById('lista-productos-tabla');
-        tabla.innerHTML = productos.map(p => `<tr><td>${p.nombre}</td><td>$${p.precio}</td></tr>`).join('');
-    };
-
-    document.getElementById('btn-registrar-prod').addEventListener('click', async () => {
-        const p = {
-            nombre: document.getElementById('prod-nombre').value,
-            precio: parseFloat(document.getElementById('prod-precio').value)
-        };
-        if(!p.nombre || isNaN(p.precio)) return;
-        await window.api.guardarNuevoProducto(p);
-        pantallaGestionMenu(); 
-    });
-
-    cargarProductos();
-}
-
-// =========================================
-// GESTIÓN DE CADETES (CON LISTA)
-// =========================================
-async function pantallaGestionCadetes() {
-    pantallaActiva.innerHTML = `
-        <h2>Gestión de Cadetes</h2>
-        <div class="panel-formulario">
-            <input type="text" id="cad-nombre" placeholder="Nombre del Cadete" class="input-base">
-            <input type="text" id="cad-tel" placeholder="Teléfono" class="input-base">
-            <input type="text" id="cad-veh" placeholder="Vehículo" class="input-base">
-            <button id="btn-registrar-cad" class="btn-primario">Registrar Cadete</button>
-        </div>
-        <hr>
-        <h3>Cadetes Registrados</h3>
-        <table class="tabla-base">
-            <thead><tr><th>Nombre</th><th>Teléfono</th><th>Vehículo</th></tr></thead>
-            <tbody id="lista-cadetes-tabla"></tbody>
-        </table>`;
-
-    const cargarCadetes = async () => {
-        const cadetes = await window.api.obtenerCadetes();
-        const tabla = document.getElementById('lista-cadetes-tabla');
-        tabla.innerHTML = cadetes.map(c => `<tr><td>${c.nombre}</td><td>${c.telefono}</td><td>${c.vehiculo}</td></tr>`).join('');
-    };
-
-    document.getElementById('btn-registrar-cad').addEventListener('click', async () => {
-        const cad = {
-            nombre: document.getElementById('cad-nombre').value,
-            telefono: document.getElementById('cad-tel').value,
-            vehiculo: document.getElementById('cad-veh').value
-        };
-        if(!cad.nombre) return;
-        const res = await window.api.guardarNuevoCadete(cad);
-        if(res.exito) pantallaGestionCadetes();
-    });
-
-    cargarCadetes();
-}
-
-async function pantallaGestionClientes() {
-    pantallaActiva.innerHTML = `<h2>Gestión de Clientes</h2>
-        <div class="panel-formulario">
-            <input type="text" id="cli-nombre" placeholder="Nombre" class="input-base">
-            <input type="text" id="cli-tel" placeholder="Teléfono" class="input-base">
-            <input type="text" id="cli-dir" placeholder="Dirección" class="input-base">
-            <button id="btn-registrar-cli" class="btn-primario">Registrar Cliente</button>
-        </div>`;
-    document.getElementById('btn-registrar-cli').addEventListener('click', async () => {
-        const c = {
-            nombre: document.getElementById('cli-nombre').value,
-            telefono: document.getElementById('cli-tel').value,
-            direccion: document.getElementById('cli-dir').value
-        };
-        await window.api.guardarNuevoCliente(c);
-        alert("Cliente registrado");
+        tabla.innerHTML += `<tr><td>${new Date(p.fecha).toLocaleDateString()}</td><td>${p.cliente_nombre}</td><td>$${p.total}</td><td>${p.metodo_pago}</td><td>${p.id_cadete}</td></tr>`;
     });
 }
 
@@ -280,7 +282,7 @@ function imprimirTicket(total, itemsHTML) {
     iframe.style.display = 'none';
     document.body.appendChild(iframe);
     const doc = iframe.contentWindow.document;
-    doc.write(`<html><body style="font-family:monospace;"><h2>Fika POS</h2><hr>${itemsHTML}<hr><b>Total: $${total}</b></body></html>`);
+    doc.write(`<html><body style="font-family:monospace; padding:10px;"><h2>Fika POS</h2><hr>${itemsHTML}<hr><b>Total: $${total}</b></body></html>`);
     doc.close();
     setTimeout(() => { iframe.contentWindow.print(); document.body.removeChild(iframe); }, 500);
 }
