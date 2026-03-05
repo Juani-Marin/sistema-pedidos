@@ -1,18 +1,33 @@
 {
-  "name": "sistema-pedidos",
+  "name": "fika-pos",
   "version": "1.0.0",
-  "description": "",
+  "description": "Sistema de gestión offline",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "build": "electron-builder --win"
   },
-  "keywords": [],
-  "author": "",
+  "author": "Tu Nombre",
   "license": "ISC",
-  "devDependencies": {
-    "electron": "^40.6.1"
-  },
   "dependencies": {
     "better-sqlite3": "^12.6.2"
+  },
+  "devDependencies": {
+    "electron": "^40.6.1",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.fikastudios.pos",
+    "productName": "Fika POS",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }

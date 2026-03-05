@@ -175,6 +175,7 @@ async function pantallaNuevoPedido() {
         if (res.exito) { 
             mostrarMensaje("✅ Comanda guardada correctamente", "exito");
             btn.textContent = "✅ Guardado";
+            imprimirTicket(totalAcumulado, document.getElementById('lista-pedido').innerHTML);
             setTimeout(() => { pantallaNuevoPedido(); }, 1500);
         } else {
             mostrarMensaje("Hubo un error al guardar en la base de datos.", "error");
@@ -295,4 +296,40 @@ async function pantallaGestionCadetes() {
             setTimeout(() => { pantallaGestionCadetes(); }, 1000);
         }
     });
+}
+function imprimirTicket(total, itemsHTML) {
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+    
+    const doc = iframe.contentWindow.document;
+    doc.write(`
+        <html>
+        <head>
+            <style>
+                body { font-family: monospace; font-size: 14px; width: 80mm; margin: 0; padding: 10px; color: black; }
+                h2 { text-align: center; margin: 0 0 10px 0; }
+                ul { list-style: none; padding: 0; margin: 0; }
+                li { margin-bottom: 5px; border-bottom: 1px dashed #ccc; padding-bottom: 5px; }
+                .total { font-size: 18px; font-weight: bold; text-align: right; margin-top: 10px; }
+            </style>
+        </head>
+        <body>
+            <h2>Fika POS</h2>
+            <p>Comanda de pedido</p>
+            <hr style="border-top: 1px dashed black;">
+            <ul>${itemsHTML}</ul>
+            <hr style="border-top: 1px dashed black;">
+            <div class="total">Total: $${total}</div>
+        </body>
+        </html>
+    `);
+    doc.close();
+    
+    // Le damos un momento para que el navegador renderice el iframe antes de imprimir
+    setTimeout(() => {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+        setTimeout(() => document.body.removeChild(iframe), 1000);
+    }, 250);
 }
