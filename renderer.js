@@ -31,6 +31,7 @@ async function pantallaNuevoPedido() {
     const area = document.getElementById('area-trabajo-pedidos');
     totalAcumulado = 0;
     clienteSeleccionadoId = null;
+    let precioProductoActual = 0; // Variable para manejar el precio internamente
 
     area.innerHTML = `
         <div class="panel-comanda">
@@ -48,7 +49,6 @@ async function pantallaNuevoPedido() {
                     <input type="text" id="input-producto" class="input-bloque" placeholder="Escribí para buscar..." autocomplete="off" />
                     <div id="sugerencias-producto" class="caja-sugerencias absoluta"></div>
                 </div>
-                <input type="number" id="input-precio" class="input-corto" placeholder="$" readonly tabindex="-1" style="background-color: #eee; cursor: not-allowed;" />
                 <input type="number" id="input-cantidad" class="input-mini" value="1" min="1" />
                 <button id="btn-agregar" class="btn-secundario">Agregar</button>
             </div>
@@ -78,7 +78,6 @@ async function pantallaNuevoPedido() {
 
     const inputCli = document.getElementById('input-cliente');
     const inputProd = document.getElementById('input-producto');
-    const inputPrecio = document.getElementById('input-precio');
     const divSugProd = document.getElementById('sugerencias-producto');
     const divSugCli = document.getElementById('sugerencias-cliente');
     const grupoCadetes = document.getElementById('grupo-cadetes');
@@ -92,7 +91,7 @@ async function pantallaNuevoPedido() {
         setTimeout(() => { divMensaje.style.display = 'none'; }, 3000);
     };
 
-    // Carga de cadetes al selector
+    // Cargar cadetes
     const cadetes = await window.api.obtenerCadetes();
     cadetes.forEach(c => {
         const opt = document.createElement('option');
@@ -101,6 +100,7 @@ async function pantallaNuevoPedido() {
         grupoCadetes.appendChild(opt);
     });
 
+    // Buscar Cliente
     inputCli.addEventListener('input', async () => {
         divSugCli.innerHTML = "";
         if (inputCli.value.length > 2) {
@@ -119,6 +119,7 @@ async function pantallaNuevoPedido() {
         }
     });
 
+    // Buscar Producto y capturar precio
     inputProd.addEventListener('input', async () => {
         divSugProd.innerHTML = "";
         if (inputProd.value.length > 1) {
@@ -129,7 +130,7 @@ async function pantallaNuevoPedido() {
                 item.classList.add('item-sugerencia');
                 item.onclick = () => { 
                     inputProd.value = p.nombre; 
-                    inputPrecio.value = p.precio; 
+                    precioProductoActual = p.precio; // El precio se guarda internamente
                     divSugProd.innerHTML = ""; 
                 };
                 divSugProd.appendChild(item);
@@ -137,27 +138,30 @@ async function pantallaNuevoPedido() {
         }
     });
 
+    // Agregar producto a la lista
     document.getElementById('btn-agregar').addEventListener('click', () => {
         const nombre = inputProd.value; 
-        const precio = parseFloat(inputPrecio.value); 
         const cant = parseInt(document.getElementById('input-cantidad').value);
         
-        if (!nombre || isNaN(precio)) return;
+        if (!nombre || precioProductoActual === 0) {
+            return mostrarMensaje("Seleccioná un producto de la lista.", "error");
+        }
         
-        totalAcumulado += (cant * precio);
+        totalAcumulado += (cant * precioProductoActual);
         document.getElementById('total-pedido').innerText = totalAcumulado;
         
         const li = document.createElement('li'); 
-        li.innerText = `${cant}x ${nombre} --- $${cant * precio}`;
+        li.innerText = `${cant}x ${nombre} --- $${cant * precioProductoActual}`;
         li.classList.add('item-pedido');
         document.getElementById('lista-pedido').appendChild(li);
         
         inputProd.value = ""; 
-        inputPrecio.value = ""; 
+        precioProductoActual = 0; 
         document.getElementById('input-cantidad').value = 1;
         inputProd.focus();
     });
 
+    // Guardar Comanda
     document.getElementById('btn-guardar').addEventListener('click', async (e) => {
         if (!clienteSeleccionadoId || totalAcumulado <= 0) {
             return mostrarMensaje("Faltan datos en la comanda", "error");
@@ -184,7 +188,7 @@ async function pantallaNuevoPedido() {
     });
 }
 
-// RESTO DE FUNCIONES (GESTIÓN Y LISTADOS)
+// OTRAS FUNCIONES DE GESTIÓN
 
 async function pantallaHistorial() {
     const area = document.getElementById('area-trabajo-pedidos');
