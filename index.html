@@ -3,25 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fika POS - Gestión de Pedidos</title>
+    <title>Fika POS</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-    <nav>
-        <h2 class="titulo-nav">Fika POS</h2>
-        <button id="btn-pedidos">🛒 Pedidos</button>
-        <button id="btn-clientes">👥 Clientes</button>
-        <button id="btn-productos">🍔 Productos</button>
-        <button id="btn-cadetes">🛵 Cadetes</button>
-    </nav>
+    <div id="contenedor-principal">
+        
+        <nav id="menu">
+            <h2 style="color: white; text-align: center; margin-bottom: 20px;">Fika POS</h2>
+            <button id="btn-pedidos">🛒 Pedidos</button>
+            <button id="btn-clientes">👥 Clientes</button>
+            <button id="btn-productos">🍔 Productos</button>
+            <button id="btn-cadetes">🛵 Cadetes</button>
+        </nav>
 
-    <main id="pantalla-activa">
-        <div class="bienvenida">
-            <h1>Bienvenido</h1>
-            <p>Seleccioná una opción del menú para empezar a trabajar.</p>
-        </div>
-    </main>
+        <main id="pantalla-activa">
+            <div class="bienvenida">
+                <h1>Bienvenido</h1>
+                <p>Seleccioná una opción para comenzar.</p>
+            </div>
+        </main>
+        
+    </div>
 
     <script src="renderer.js"></script>
 </body>
