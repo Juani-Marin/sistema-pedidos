@@ -7,27 +7,25 @@ const pantallaActiva = document.getElementById('pantalla-activa');
 let clienteSeleccionadoId = null; 
 let totalAcumulado = 0;           
 
-// =========================================
-// UTILIDADES DE FEEDBACK (SIN ALERTS)
-// =========================================
-const mostrarNotificacion = (contenedor, texto, tipo) => {
-    const divMensaje = document.createElement('div');
-    divMensaje.textContent = texto;
-    divMensaje.style.padding = '10px';
-    divMensaje.style.borderRadius = '6px';
-    divMensaje.style.marginBottom = '15px';
-    divMensaje.style.fontWeight = 'bold';
-    divMensaje.style.textAlign = 'center';
-    divMensaje.style.backgroundColor = tipo === 'error' ? '#f8d7da' : '#d4edda';
-    divMensaje.style.color = tipo === 'error' ? '#721c24' : '#155724';
-    
-    contenedor.prepend(divMensaje);
-    setTimeout(() => { divMensaje.remove(); }, 3000);
+// UTILS: Feedback visual en botones
+const feedbackBoton = (boton, textoExito) => {
+    const textoOriginal = boton.innerText;
+    const colorOriginal = boton.style.backgroundColor;
+
+    boton.disabled = true;
+    boton.innerText = textoExito;
+    boton.style.backgroundColor = "var(--color-exito)";
+    boton.style.color = "white";
+
+    setTimeout(() => {
+        boton.disabled = false;
+        boton.innerText = textoOriginal;
+        boton.style.backgroundColor = colorOriginal;
+        boton.style.color = "";
+    }, 1500);
 };
 
-// =========================================
-// EVENTOS DEL MENÚ PRINCIPAL
-// =========================================
+// EVENTOS MENÚ
 btnPedidos.addEventListener('click', () => {
     pantallaActiva.innerHTML = `
         <h2>Gestión de Pedidos</h2>
@@ -36,7 +34,6 @@ btnPedidos.addEventListener('click', () => {
             <button id="btn-ver-pedidos" class="btn-accion">Ver Historial</button>
         </div>
         <div id="area-trabajo-pedidos"></div>`;
-
     document.getElementById('btn-nuevo-pedido').addEventListener('click', pantallaNuevoPedido);
     document.getElementById('btn-ver-pedidos').addEventListener('click', pantallaHistorial);
 });
@@ -45,9 +42,7 @@ btnClientes.addEventListener('click', pantallaGestionClientes);
 btnProductos.addEventListener('click', pantallaGestionMenu);
 btnCadetes.addEventListener('click', pantallaGestionCadetes);
 
-// =========================================
-// GESTIÓN DE PEDIDOS
-// =========================================
+// PANTALLAS
 async function pantallaNuevoPedido() {
     const area = document.getElementById('area-trabajo-pedidos');
     totalAcumulado = 0;
@@ -55,7 +50,7 @@ async function pantallaNuevoPedido() {
     let precioProductoActual = 0;
 
     area.innerHTML = `
-        <div class="panel-comanda" id="form-pedido">
+        <div class="panel-comanda">
             <h3>Nueva Comanda</h3>
             <label>Cliente:</label><br>
             <input type="text" id="input-cliente" class="input-bloque" placeholder="Buscar cliente..." autocomplete="off" />
@@ -97,7 +92,6 @@ async function pantallaNuevoPedido() {
     const divSugProd = document.getElementById('sugerencias-producto');
     const divSugCli = document.getElementById('sugerencias-cliente');
     const grupoCadetes = document.getElementById('grupo-cadetes');
-    const formPedido = document.getElementById('form-pedido');
 
     const cadetes = await window.api.obtenerCadetes();
     cadetes.forEach(c => {
@@ -115,11 +109,7 @@ async function pantallaNuevoPedido() {
                 const item = document.createElement('div');
                 item.innerText = `${c.nombre} (${c.direccion})`;
                 item.classList.add('item-sugerencia');
-                item.onclick = () => { 
-                    inputCli.value = c.nombre; 
-                    clienteSeleccionadoId = c.id; 
-                    divSugCli.innerHTML = ""; 
-                };
+                item.onclick = () => { inputCli.value = c.nombre; clienteSeleccionadoId = c.id; divSugCli.innerHTML = ""; };
                 divSugCli.appendChild(item);
             });
         }
@@ -133,11 +123,7 @@ async function pantallaNuevoPedido() {
                 const item = document.createElement('div');
                 item.innerText = `${p.nombre} - $${p.precio}`;
                 item.classList.add('item-sugerencia');
-                item.onclick = () => { 
-                    inputProd.value = p.nombre; 
-                    precioProductoActual = p.precio; 
-                    divSugProd.innerHTML = ""; 
-                };
+                item.onclick = () => { inputProd.value = p.nombre; precioProductoActual = p.precio; divSugProd.innerHTML = ""; };
                 divSugProd.appendChild(item);
             });
         }
@@ -153,16 +139,13 @@ async function pantallaNuevoPedido() {
         li.innerText = `${cant}x ${nombre} --- $${cant * precioProductoActual}`;
         li.classList.add('item-pedido');
         document.getElementById('lista-pedido').appendChild(li);
-        inputProd.value = ""; 
-        precioProductoActual = 0; 
-        document.getElementById('input-cantidad').value = 1;
+        inputProd.value = ""; precioProductoActual = 0; document.getElementById('input-cantidad').value = 1;
         inputProd.focus();
     });
 
-    document.getElementById('btn-guardar').addEventListener('click', async (e) => {
-        if (!clienteSeleccionadoId || totalAcumulado <= 0) {
-            return mostrarNotificacion(formPedido, "⚠️ Faltan datos", "error");
-        }
+    const btnGuardar = document.getElementById('btn-guardar');
+    btnGuardar.addEventListener('click', async () => {
+        if (!clienteSeleccionadoId || totalAcumulado <= 0) return;
         const datos = { 
             idCliente: clienteSeleccionadoId, 
             total: totalAcumulado, 
@@ -171,95 +154,83 @@ async function pantallaNuevoPedido() {
         };
         const res = await window.api.guardarPedido(datos);
         if (res.exito) { 
-            mostrarNotificacion(formPedido, "✅ Pedido Guardado", "exito");
+            feedbackBoton(btnGuardar, "✅ Guardado y Ticket");
             imprimirTicket(totalAcumulado, document.getElementById('lista-pedido').innerHTML);
             setTimeout(() => { pantallaNuevoPedido(); }, 1500);
         }
     });
 }
 
-// =========================================
-// GESTIÓN DE PRODUCTOS Y CADETES (CON TABLAS)
-// =========================================
 async function pantallaGestionMenu() {
     pantallaActiva.innerHTML = `
         <h2>Gestión de Productos</h2>
-        <div class="panel-formulario" id="form-productos">
+        <div class="panel-formulario">
             <input type="text" id="prod-nombre" placeholder="Nombre del producto" class="input-base">
             <input type="number" id="prod-precio" placeholder="Precio" class="input-base">
             <button id="btn-registrar-prod" class="btn-primario">Agregar al Menú</button>
         </div>
         <hr>
-        <h3>Productos en el Menú</h3>
         <table class="tabla-base">
             <thead><tr><th>Producto</th><th>Precio</th></tr></thead>
             <tbody id="lista-productos-tabla"></tbody>
         </table>`;
-
-    const cargarProductos = async () => {
+    const cargar = async () => {
         const productos = await window.api.buscarProductos("");
         document.getElementById('lista-productos-tabla').innerHTML = productos.map(p => `<tr><td>${p.nombre}</td><td>$${p.precio}</td></tr>`).join('');
     };
-
-    document.getElementById('btn-registrar-prod').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-registrar-prod');
+    btn.addEventListener('click', async () => {
         const p = { nombre: document.getElementById('prod-nombre').value, precio: parseFloat(document.getElementById('prod-precio').value) };
         if(!p.nombre || isNaN(p.precio)) return;
         const res = await window.api.guardarNuevoProducto(p);
-        if(res.exito) {
-            mostrarNotificacion(document.getElementById('form-productos'), "✅ Producto agregado", "exito");
-            setTimeout(() => { pantallaGestionMenu(); }, 1000);
-        }
+        if(res.exito) { feedbackBoton(btn, "✅ Agregado"); cargar(); document.getElementById('prod-nombre').value = ""; document.getElementById('prod-precio').value = ""; }
     });
-    cargarProductos();
+    cargar();
 }
 
 async function pantallaGestionCadetes() {
     pantallaActiva.innerHTML = `
         <h2>Gestión de Cadetes</h2>
-        <div class="panel-formulario" id="form-cadetes">
+        <div class="panel-formulario">
             <input type="text" id="cad-nombre" placeholder="Nombre" class="input-base">
             <input type="text" id="cad-tel" placeholder="Teléfono" class="input-base">
             <input type="text" id="cad-veh" placeholder="Vehículo" class="input-base">
             <button id="btn-registrar-cad" class="btn-primario">Registrar Cadete</button>
         </div>
         <hr>
-        <h3>Cadetes Registrados</h3>
         <table class="tabla-base">
             <thead><tr><th>Nombre</th><th>Teléfono</th><th>Vehículo</th></tr></thead>
             <tbody id="lista-cadetes-tabla"></tbody>
         </table>`;
-
-    const cargarCadetes = async () => {
+    const cargar = async () => {
         const cadetes = await window.api.obtenerCadetes();
         document.getElementById('lista-cadetes-tabla').innerHTML = cadetes.map(c => `<tr><td>${c.nombre}</td><td>${c.telefono}</td><td>${c.vehiculo}</td></tr>`).join('');
     };
-
-    document.getElementById('btn-registrar-cad').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-registrar-cad');
+    btn.addEventListener('click', async () => {
         const cad = { nombre: document.getElementById('cad-nombre').value, telefono: document.getElementById('cad-tel').value, vehiculo: document.getElementById('cad-veh').value };
         if(!cad.nombre) return;
         const res = await window.api.guardarNuevoCadete(cad);
-        if(res.exito) {
-            mostrarNotificacion(document.getElementById('form-cadetes'), "✅ Cadete registrado", "exito");
-            setTimeout(() => { pantallaGestionCadetes(); }, 1000);
-        }
+        if(res.exito) { feedbackBoton(btn, "✅ Registrado"); cargar(); document.getElementById('cad-nombre').value = ""; document.getElementById('cad-tel').value = ""; document.getElementById('cad-veh').value = ""; }
     });
-    cargarCadetes();
+    cargar();
 }
 
 async function pantallaGestionClientes() {
-    pantallaActiva.innerHTML = `<h2>Gestión de Clientes</h2>
-        <div class="panel-formulario" id="form-clientes">
+    pantallaActiva.innerHTML = `
+        <h2>Gestión de Clientes</h2>
+        <div class="panel-formulario">
             <input type="text" id="cli-nombre" placeholder="Nombre" class="input-base">
             <input type="text" id="cli-tel" placeholder="Teléfono" class="input-base">
             <input type="text" id="cli-dir" placeholder="Dirección" class="input-base">
             <button id="btn-registrar-cli" class="btn-primario">Registrar Cliente</button>
         </div>`;
-    document.getElementById('btn-registrar-cli').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-registrar-cli');
+    btn.addEventListener('click', async () => {
         const c = { nombre: document.getElementById('cli-nombre').value, telefono: document.getElementById('cli-tel').value, direccion: document.getElementById('cli-dir').value };
+        if(!c.nombre) return;
         const res = await window.api.guardarNuevoCliente(c);
-        if(res.exito) {
-            mostrarNotificacion(document.getElementById('form-clientes'), "✅ Cliente registrado", "exito");
-        }
+        if(res.exito) { feedbackBoton(btn, "✅ Cliente Registrado"); document.getElementById('cli-nombre').value = ""; document.getElementById('cli-tel').value = ""; document.getElementById('cli-dir').value = ""; }
     });
 }
 
@@ -271,10 +242,7 @@ async function pantallaHistorial() {
             <thead><tr><th>Fecha</th><th>Cliente</th><th>Total</th><th>Pago</th><th>Entrega</th></tr></thead>
             <tbody id="cuerpo-historial"></tbody>
         </table>`;
-    const tabla = document.getElementById('cuerpo-historial');
-    pedidos.forEach(p => {
-        tabla.innerHTML += `<tr><td>${new Date(p.fecha).toLocaleDateString()}</td><td>${p.cliente_nombre}</td><td>$${p.total}</td><td>${p.metodo_pago}</td><td>${p.id_cadete}</td></tr>`;
-    });
+    document.getElementById('cuerpo-historial').innerHTML = pedidos.map(p => `<tr><td>${new Date(p.fecha).toLocaleDateString()}</td><td>${p.cliente_nombre}</td><td>$${p.total}</td><td>${p.metodo_pago}</td><td>${p.id_cadete}</td></tr>`).join('');
 }
 
 function imprimirTicket(total, itemsHTML) {
